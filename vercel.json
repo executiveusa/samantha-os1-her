@@ -13,9 +13,9 @@
       "entrypoint": "os1_orchestrator/app.py"
     },
     "voice": {
-      "root": "services/voice",
+      "root": "services/brain-vercel",
       "framework": "fastapi",
-      "entrypoint": "os1_voice/brain_server.py",
+      "entrypoint": "app.py",
       "bindings": [
         {
           "type": "service",
