@@ -13,10 +13,28 @@ log = logging.getLogger("os1.orch_client")
 
 class OrchestratorClient:
     def __init__(self, base_url: str | None = None, token: str | None = None) -> None:
-        self.base_url = (base_url or os.environ.get("ORCHESTRATOR_URL", "http://127.0.0.1:8787")).rstrip("/")
-        self.token = token if token is not None else os.environ.get("OS1_CLIENT_TOKEN", "")
-        headers = {"Authorization": f"Bearer {self.token}"} if self.token else {}
-        self._http = httpx.AsyncClient(base_url=self.base_url, headers=headers, timeout=2.5)
+        self._explicit_base_url = base_url.rstrip("/") if base_url else None
+        self._explicit_token = token
+        self._http_client: httpx.AsyncClient | None = None
+        self._http_base_url: str = ""
+
+    @property
+    def base_url(self) -> str:
+        # Resolve at request time so Vercel service bindings (ORCHESTRATOR_URL) work cleanly at runtime.
+        return (self._explicit_base_url or os.environ.get("ORCHESTRATOR_URL", "http://127.0.0.1:8787")).rstrip("/")
+
+    @property
+    def token(self) -> str:
+        return self._explicit_token if self._explicit_token is not None else os.environ.get("OS1_CLIENT_TOKEN", "")
+
+    @property
+    def _http(self) -> httpx.AsyncClient:
+        current = self.base_url
+        if self._http_client is None or self._http_base_url != current:
+            headers = {"Authorization": f"Bearer {self.token}"} if self.token else {}
+            self._http_client = httpx.AsyncClient(base_url=current, headers=headers, timeout=2.5)
+            self._http_base_url = current
+        return self._http_client
 
     async def try_action(self, phrase: str) -> dict[str, Any] | None:
         """Zero-LLM deterministic pill/navigation/undo/safety match on the orchestrator."""
@@ -96,4 +114,6 @@ class OrchestratorClient:
             log.debug("log_activity skipped: %s", exc)
 
     async def aclose(self) -> None:
-        await self._http.aclose()
+        if self._http_client is not None:
+            await self._http_client.aclose()
+            self._http_client = None

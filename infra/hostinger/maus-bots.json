@@ -1,0 +1,14 @@
+[
+  {
+    "name": "maus-core",
+    "kind": "docker",
+    "target": "maus-core",
+    "description": "Primary Maus Bot autonomous worker container on Hostinger VPS"
+  },
+  {
+    "name": "maus-scheduler",
+    "kind": "docker",
+    "target": "maus-scheduler",
+    "description": "Maus Bot recurring scheduler & watchdog"
+  }
+]

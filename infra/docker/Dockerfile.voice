@@ -1,0 +1,9 @@
+FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim
+WORKDIR /app
+COPY hermes/profile/SOUL.md /app/hermes/profile/SOUL.md
+COPY infra/llm-router /app/infra/llm-router
+COPY services/voice /app/services/voice
+WORKDIR /app/services/voice
+RUN uv sync --frozen --no-dev || uv sync --no-dev
+EXPOSE 8788
+CMD ["uv", "run", "uvicorn", "os1_voice.brain_server:app", "--host", "0.0.0.0", "--port", "8788"]

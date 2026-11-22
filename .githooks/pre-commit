@@ -9,8 +9,8 @@ staged="$(git diff --cached --name-only --diff-filter=ACM)"
 blocked_files=()
 while IFS= read -r f; do
   case "$f" in
-    .env|.env.*|desktop.env|*.pem|*.key|*.db|*.sqlite|*.sqlite3|*.tgz|*.b64|packages/ui/src/assets/init_sound.mp3)
-      [[ "$f" == ".env.example" ]] || blocked_files+=("$f")
+    .env|.env.*|desktop.env|.vault-staging/*|*_ed25519|*.pem|*.key|*.db|*.sqlite|*.sqlite3|*.tgz|*.b64|packages/ui/src/assets/init_sound.mp3)
+      [[ "$f" == ".env.example" || "$f" == *.env.example ]] || blocked_files+=("$f")
       ;;
   esac
 done <<< "$staged"

@@ -36,7 +36,7 @@ CONNECTOR_POLICIES = (
 )
 
 DEFAULT_PROFILE: dict[str, Any] = {
-    "name": "",
+    "name": "Bambu",
     "onboarded": False,
     "voice_key": "voice_1_warm",
     "voice_speed": 0.96,

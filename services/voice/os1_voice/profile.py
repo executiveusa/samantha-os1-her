@@ -16,8 +16,9 @@ import httpx
 
 log = logging.getLogger("os1.profile")
 
-LOCAL = Path(os.environ.get("OS1_STATE_DIR", Path.home() / ".os1")) / "profile.json"
-DEFAULT: dict[str, Any] = {"name": "", "onboarded": False, "voice_key": "voice_1_warm", "dossier": {}}
+_DEFAULT_STATE = Path("/tmp/.os1") if os.environ.get("VERCEL") == "1" else Path.home() / ".os1"
+LOCAL = Path(os.environ.get("OS1_STATE_DIR", _DEFAULT_STATE)) / "profile.json"
+DEFAULT: dict[str, Any] = {"name": "Bambu", "onboarded": False, "voice_key": "voice_1_warm", "dossier": {}}
 
 
 class ProfileStore:

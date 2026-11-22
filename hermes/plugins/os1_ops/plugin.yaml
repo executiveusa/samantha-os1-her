@@ -1,0 +1,3 @@
+name: os1_ops
+version: 1.0.0
+description: "Tailscale, Hostinger VPS, Infisical Vault, and Maus Bots control plane for Samantha OS1"

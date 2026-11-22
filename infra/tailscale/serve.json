@@ -1,0 +1,22 @@
+{
+  "TCP": {
+    "443": {
+      "HTTPS": true
+    }
+  },
+  "Web": {
+    "${TS_CERT_DOMAIN}:443": {
+      "Handlers": {
+        "/": {
+          "Proxy": "http://orchestrator:8787"
+        },
+        "/brain": {
+          "Proxy": "http://brain-server:8788"
+        },
+        "/vault": {
+          "Proxy": "http://infisical:8080"
+        }
+      }
+    }
+  }
+}

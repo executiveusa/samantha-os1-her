@@ -1,0 +1,80 @@
+{
+  "generated_at": "2026-11-22T17:16:32.662069+00:00",
+  "upstream": {
+    "reachable": true,
+    "bytes": 30456,
+    "url": "https://raw.githubusercontent.com/open-free-llm-api/awesome-freellm-apis/main/README.md"
+  },
+  "providers": [
+    {
+      "name": "cerebras-free",
+      "base_url": "https://api.cerebras.ai/v1",
+      "api_key_env": "CEREBRAS_API_KEYS",
+      "models": [
+        "llama-3.3-70b",
+        "llama3.1-8b"
+      ],
+      "priority": 10,
+      "source": "awesome-freellm-apis"
+    },
+    {
+      "name": "groq-free",
+      "base_url": "https://api.groq.com/openai/v1",
+      "api_key_env": "GROQ_API_KEYS",
+      "models": [
+        "llama-3.3-70b-versatile",
+        "llama-3.1-8b-instant"
+      ],
+      "priority": 15,
+      "source": "awesome-freellm-apis"
+    },
+    {
+      "name": "openrouter-free",
+      "base_url": "https://openrouter.ai/api/v1",
+      "api_key_env": "OPENROUTER_API_KEYS",
+      "models": [
+        "openrouter/free",
+        "meta-llama/llama-3.3-70b-instruct:free",
+        "google/gemma-3-27b-it:free",
+        "qwen/qwen3-235b-a22b:free",
+        "deepseek/deepseek-r1:free"
+      ],
+      "priority": 20,
+      "source": "awesome-freellm-apis"
+    },
+    {
+      "name": "nvidia-free",
+      "base_url": "https://integrate.api.nvidia.com/v1",
+      "api_key_env": "NVIDIA_API_KEYS",
+      "models": [
+        "meta/llama-3.3-70b-instruct",
+        "nvidia/llama-3.1-nemotron-ultra-253b-v1",
+        "deepseek-ai/deepseek-r1"
+      ],
+      "priority": 25,
+      "source": "nvidia-nim-free"
+    },
+    {
+      "name": "github-models-free",
+      "base_url": "https://models.inference.ai.azure.com",
+      "api_key_env": "GITHUB_MODELS_TOKEN",
+      "models": [
+        "gpt-4o-mini",
+        "Meta-Llama-3.3-70B-Instruct"
+      ],
+      "priority": 38,
+      "source": "awesome-freellm-apis"
+    },
+    {
+      "name": "opencode-free",
+      "base_url": "http://opencode:4096/v1",
+      "api_key_env": "OPENCODE_API_KEY",
+      "models": [
+        "opencode/big-pickle",
+        "opencode/glm-4.7-free"
+      ],
+      "priority": 40,
+      "source": "anomalyco/opencode"
+    }
+  ]
+}

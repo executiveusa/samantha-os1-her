@@ -39,6 +39,16 @@ platforms:
         samantha-work:
           model: "claude-opus-5-5"
           provider: "anthropic"
+        # Free-tier routes (OpenRouter :free, NVIDIA NIM, OpenCode)
+        samantha-free:
+          model: "openrouter/free"
+          provider: "openrouter"
+        samantha-nvidia-free:
+          model: "meta/llama-3.3-70b-instruct"
+          provider: "nvidia"
+        samantha-opencode:
+          model: "opencode/big-pickle"
+          provider: "opencode"
 
 # --- Voice output for Hermes-native surfaces only (CLI testing, cron voice notes) ---
 # Live conversation TTS runs in services/voice over Fish's WebSocket, not here,
@@ -58,6 +68,11 @@ plugins:
     - os1_memory
     - os1_composio
     - os1_user_computer
+    - os1_pstack
+    - os1_ops
+    - os1_wiki
+    - os1_github
+    - os1_vision
   entries:
     fish-audio:
       settings:

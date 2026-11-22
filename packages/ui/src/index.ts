@@ -5,6 +5,7 @@ export { InfinityLoader, type InfinityLoaderOptions } from "./components/Infinit
 export { Presence, type PresenceState } from "./components/Presence";
 export { SayChips } from "./components/SayChips";
 export { useOs1, type Os1BusState, type Os1Config, type Os1State, type Phase } from "./useOs1";
+export { type HoloGesture, type VisionClawState, useVisionClaw } from "./useVisionClaw";
 export { Os1Sound, sound } from "./sound";
 export { StartupSequence } from "./screens/StartupSequence";
 export * from "./types";

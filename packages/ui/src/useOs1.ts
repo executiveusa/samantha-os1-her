@@ -84,6 +84,7 @@ export function useOs1(config: Os1Config) {
   const [state, setState] = useState<Os1State>(INITIAL);
   const [bus, setBus] = useState<Os1BusState>(INITIAL_BUS);
   const room = useRef<Room | null>(null);
+  const attachedAudio = useRef<Set<HTMLMediaElement>>(new Set());
   const levels = useRef({ agent: 0, user: 0 });
   const engine = useRef<TokenResponse["engine"]>("drama3");
   const events = useRef<{ close: () => void } | null>(null);
@@ -212,10 +213,26 @@ export function useOs1(config: Os1Config) {
         });
         r.on(RoomEvent.ParticipantConnected, (p: RemoteParticipant) => readAgent(p));
         r.on(RoomEvent.TrackSubscribed, (track: RemoteTrack) => {
-          if (track.kind === Track.Kind.Audio) document.body.appendChild(track.attach());
+          if (track.kind === Track.Kind.Audio) {
+            const el = track.attach();
+            attachedAudio.current.add(el);
+            document.body.appendChild(el);
+          }
+        });
+        r.on(RoomEvent.TrackUnsubscribed, (track: RemoteTrack) => {
+          if (track.kind === Track.Kind.Audio) {
+            for (const el of track.detach()) {
+              attachedAudio.current.delete(el);
+              el.remove();
+            }
+          }
         });
         r.on(RoomEvent.ConnectionStateChanged, (cs) => {
-          if (cs === ConnectionState.Disconnected && !switching.current) setState((s) => ({ ...s, connection: "idle" }));
+          if (cs === ConnectionState.Disconnected && !switching.current) {
+            attachedAudio.current.forEach((el) => el.remove());
+            attachedAudio.current.clear();
+            setState((s) => ({ ...s, connection: "idle" }));
+          }
         });
         r.registerTextStreamHandler("lk.transcription", async (reader, participant) => {
           const mine = participant.identity === r.localParticipant.identity;
@@ -232,8 +249,9 @@ export function useOs1(config: Os1Config) {
         r.remoteParticipants.forEach(readAgent);
         if (engine.current === "live3") {
           setState((s) => ({ ...s, phase: "active" }));
-          if (t.brain_url && t.session_id) {
-            const pollUrl = `${t.brain_url}/os1/sessions/${t.session_id}/poll`;
+          if (t.session_id) {
+            const brainBase = (t.brain_url || config.orchestratorUrl).replace(/\/$/, "");
+            const pollUrl = `${brainBase}/os1/sessions/${t.session_id}/poll`;
             const headers = config.clientToken ? { Authorization: `Bearer ${config.clientToken}` } : undefined;
             const timer = window.setInterval(async () => {
               try {
