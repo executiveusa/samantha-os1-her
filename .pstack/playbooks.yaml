@@ -1,0 +1,71 @@
+# pstack Playbooks for Samantha OS¹ Self-Building & Self-Updating
+# Inspired by Lauren Tan (@poteto) cursor/plugins/pstack
+version: "1.0"
+router: "poteto-mode"
+
+playbooks:
+  poteto-mode:
+    description: "Front-door engineering router: classify task, select playbook, enforce principles and verification gates."
+    steps:
+      - "Inspect repo state, git status, and docs/agent-context.md"
+      - "Classify risk tier (low | medium | high) and blast radius"
+      - "Select specialized playbook (architect | bugfix | tdd | self-update | unslop | ops)"
+      - "Execute in verifiable units and run full validation suite before yielding"
+    principles:
+      - principle-prove-it-works
+      - principle-sequence-verifiable-units
+      - principle-guard-the-context-window
+
+  architect:
+    description: "Design a new capability or cross-service change from first principles before writing code."
+    steps:
+      - "Audit existing architecture and reuse existing primitives"
+      - "Define strict component boundaries and failure modes"
+      - "Write concise plan with binary pass/fail validation criteria and rollback strategy"
+    principles:
+      - principle-boundary-discipline
+      - principle-subtract-before-you-add
+      - principle-model-the-domain
+
+  bugfix:
+    description: "Reproduce a defect, isolate the root cause, add a regression test, and prove the fix."
+    steps:
+      - "Reproduce failure deterministically in a unit or integration test"
+      - "Identify root cause without patching symptoms"
+      - "Apply minimal fix and verify regression test + full suite pass"
+    principles:
+      - principle-fix-root-causes
+      - principle-encode-lessons-in-structure
+      - principle-prove-it-works
+
+  tdd:
+    description: "Test-driven feature implementation targeting behavior contracts."
+    steps:
+      - "Write failing behavioral tests covering happy path and edge cases"
+      - "Implement minimal code to satisfy tests"
+      - "Refactor for clarity while keeping tests green"
+    principles:
+      - principle-test-behavior-not-implementation
+      - principle-type-system-discipline
+
+  self-update:
+    description: "Autonomous Samantha self-update workflow via OpenCode + Git branch + verification."
+    steps:
+      - "Create isolated git branch self-update/<slug>"
+      - "Invoke OpenCode or Hermes with pstack principles and target spec"
+      - "Run pytest (orchestrator + voice), npm run typecheck, npm run build, and secret pre-commit scan"
+      - "Commit with structured message and open PR (never push directly to main or deploy without health verification)"
+    principles:
+      - principle-make-operations-idempotent
+      - principle-prove-it-works
+      - principle-never-block-on-the-human
+
+  unslop:
+    description: "Audit recent diffs for dead code, over-abstraction, type leaks, or untested branches and simplify."
+    steps:
+      - "Review git diff against principles"
+      - "Remove redundant code, unused imports, and defensive bloat"
+      - "Re-run full verification suite"
+    principles:
+      - principle-subtract-before-you-add
+      - principle-minimize-reader-load

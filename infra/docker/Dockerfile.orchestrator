@@ -1,0 +1,21 @@
+FROM node:24-slim AS web-builder
+WORKDIR /src
+COPY package.json package-lock.json ./
+COPY packages/ui/package.json packages/ui/
+COPY apps/desktop/package.json apps/desktop/
+RUN npm ci --no-audit --no-fund
+COPY packages/ui packages/ui
+COPY apps/desktop apps/desktop
+RUN npm run build:web -w @os1/desktop
+
+FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim
+RUN apt-get update && apt-get install -y --no-install-recommends openssh-client curl && rm -rf /var/lib/apt/lists/*
+WORKDIR /app
+COPY .pstack /app/.pstack
+COPY infra/hostinger/maus-bots.json /app/infra/hostinger/maus-bots.json
+COPY services/orchestrator /app/services/orchestrator
+COPY --from=web-builder /src/apps/desktop/dist-web /app/apps/desktop/dist-web
+WORKDIR /app/services/orchestrator
+RUN uv sync --frozen --no-dev || uv sync --no-dev
+EXPOSE 8787
+CMD ["uv", "run", "uvicorn", "os1_orchestrator.app:app", "--host", "0.0.0.0", "--port", "8787"]

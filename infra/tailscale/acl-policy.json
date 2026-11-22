@@ -1,0 +1,18 @@
+{
+  "tagOwners": {
+    "tag:samantha-vps": ["autogroup:admin"],
+    "tag:maus-bots": ["autogroup:admin"]
+  },
+  "acls": [
+    {
+      "action": "accept",
+      "src": ["autogroup:member"],
+      "dst": ["tag:samantha-vps:443", "tag:samantha-vps:7880", "tag:samantha-vps:7881"]
+    },
+    {
+      "action": "accept",
+      "src": ["tag:samantha-vps"],
+      "dst": ["tag:maus-bots:22", "tag:maus-bots:443", "tag:maus-bots:8080"]
+    }
+  ]
+}

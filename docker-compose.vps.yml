@@ -1,0 +1,220 @@
+# Samantha OS¹ — 24/7/365 Hostinger VPS Production Stack
+# Includes:
+# - Infisical self-hosted vault (Postgres + Redis + Infisical)
+# - Self-hosted LiveKit WebRTC server
+# - OpenCode (anomalyco/opencode) headless server for free-model coding & self-updates
+# - OS1 Orchestrator + Ops Bridge + Vault + pstack + Web/PWA client
+# - OS1 Voice Worker & Brain Server (SmartLLMRouter: OpenRouter :free / NVIDIA / Groq / Cerebras / OpenCode)
+# - Tailscale sidecar for zero-trust private HTTPS access (https://samantha.<tailnet>.ts.net)
+#
+# Usage (after running `python3 scripts/bootstrap_vault.py`):
+#   docker compose -f docker-compose.vps.yml --env-file .vault-staging/generated-secrets.env up -d --build
+
+services:
+  # ------------------------------------------------------------------ Self-Hosted Infisical Vault
+  infisical-db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: infisical
+      POSTGRES_USER: infisical
+      POSTGRES_PASSWORD: ${INFISICAL_DB_PASSWORD:?run scripts/bootstrap_vault.py first}
+    volumes:
+      - infisical_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U infisical -d infisical"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  infisical-redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--requirepass", "${INFISICAL_REDIS_PASSWORD:?run scripts/bootstrap_vault.py first}"]
+    volumes:
+      - infisical_redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${INFISICAL_REDIS_PASSWORD}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  infisical:
+    image: infisical/infisical:latest
+    restart: unless-stopped
+    depends_on:
+      infisical-db:
+        condition: service_healthy
+      infisical-redis:
+        condition: service_healthy
+    environment:
+      ENCRYPTION_KEY: ${INFISICAL_ENCRYPTION_KEY:?run scripts/bootstrap_vault.py first}
+      AUTH_SECRET: ${INFISICAL_AUTH_SECRET:?run scripts/bootstrap_vault.py first}
+      DB_CONNECTION_URI: postgres://infisical:${INFISICAL_DB_PASSWORD}@infisical-db:5432/infisical
+      REDIS_URL: redis://default:${INFISICAL_REDIS_PASSWORD}@infisical-redis:6379
+      SITE_URL: ${INFISICAL_SITE_URL:-http://127.0.0.1:8080}
+      TELEMETRY_ENABLED: "false"
+    ports:
+      - "127.0.0.1:8080:8080"
+
+  # ------------------------------------------------------------------ Self-Hosted LiveKit WebRTC
+  livekit:
+    image: livekit/livekit-server:latest
+    restart: unless-stopped
+    command: --dev --bind 0.0.0.0
+    environment:
+      LIVEKIT_KEYS: "${LIVEKIT_API_KEY:?missing}: ${LIVEKIT_API_SECRET:?missing}"
+    ports:
+      - "7880:7880"
+      - "7881:7881"
+      - "7882:7882/udp"
+
+  # ------------------------------------------------------------------ OpenCode Headless Server (Free Models + Self-Updates)
+  opencode:
+    image: ghcr.io/anomalyco/opencode:latest
+    restart: unless-stopped
+    command: ["serve", "--hostname", "0.0.0.0", "--port", "4096"]
+    environment:
+      OPENCODE_SERVER_PASSWORD: ${OPENCODE_SERVER_PASSWORD:?missing}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+      NVIDIA_API_KEY: ${NVIDIA_API_KEY:-}
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
+      GOOGLE_API_KEY: ${GOOGLE_API_KEY:-}
+    volumes:
+      - ./infra/opencode/opencode.json:/root/.config/opencode/opencode.json:ro
+      - .:/workspace
+    working_dir: /workspace
+    ports:
+      - "127.0.0.1:4096:4096"
+
+  # ------------------------------------------------------------------ OS1 Orchestrator + Ops Bridge + Web/PWA
+  orchestrator:
+    build:
+      context: .
+      dockerfile: infra/docker/Dockerfile.orchestrator
+    restart: unless-stopped
+    depends_on:
+      - infisical
+      - opencode
+    environment:
+      OS1_STATE_DIR: /data/os1
+      OS1_CLIENT_TOKEN: ${OS1_CLIENT_TOKEN:?missing}
+      OS1_ENABLE_DEV_RESET: "0"
+      OS1_VOICE_ENGINE: ${OS1_VOICE_ENGINE:-drama3}
+      LIVEKIT_URL: ${LIVEKIT_URL:-ws://livekit:7880}
+      LIVEKIT_API_KEY: ${LIVEKIT_API_KEY:?missing}
+      LIVEKIT_API_SECRET: ${LIVEKIT_API_SECRET:?missing}
+      INFISICAL_URL: http://infisical:8080
+      INFISICAL_CLIENT_ID: ${INFISICAL_CLIENT_ID:-}
+      INFISICAL_CLIENT_SECRET: ${INFISICAL_CLIENT_SECRET:-}
+      INFISICAL_PROJECT_ID: ${INFISICAL_PROJECT_ID:-}
+      INFISICAL_ENV: ${INFISICAL_ENV:-prod}
+      OPENCODE_BASE_URL: http://opencode:4096
+      OPENCODE_SERVER_PASSWORD: ${OPENCODE_SERVER_PASSWORD:?missing}
+      HOSTINGER_API_TOKEN: ${HOSTINGER_API_TOKEN:-}
+      HOSTINGER_VM_ID: ${HOSTINGER_VM_ID:-}
+      HOSTINGER_SSH_HOST: ${HOSTINGER_SSH_HOST:-}
+      HOSTINGER_SSH_USER: ${HOSTINGER_SSH_USER:-root}
+      HOSTINGER_SSH_PORT: ${HOSTINGER_SSH_PORT:-22}
+      SAMANTHA_SSH_KEY_PATH: /run/secrets/samantha_ed25519
+      MAUS_BOTS_CONFIG: ${MAUS_BOTS_CONFIG:-/app/infra/hostinger/maus-bots.json}
+      COMPOSIO_API_KEY: ${COMPOSIO_API_KEY:-}
+      COMPOSIO_WEBHOOK_SECRET: ${COMPOSIO_WEBHOOK_SECRET:?missing}
+      TYPESAFE_API_KEY: ${TYPESAFE_API_KEY:-}
+      FISH_API_KEY: ${FISH_API_KEY:-}
+      FISH_AGENT_ID: ${FISH_AGENT_ID:-}
+    volumes:
+      - os1_state:/data/os1
+      - ./.vault-staging/samantha_ed25519:/run/secrets/samantha_ed25519:ro
+    ports:
+      - "127.0.0.1:8787:8787"
+    healthcheck:
+      test: ["CMD-SHELL", "python -c 'import urllib.request; urllib.request.urlopen(\"http://127.0.0.1:8787/health\")'"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  # ------------------------------------------------------------------ OS1 Brain Server (Smart Free-LLM Router)
+  brain-server:
+    build:
+      context: .
+      dockerfile: infra/docker/Dockerfile.voice
+    restart: unless-stopped
+    command: ["uv", "run", "uvicorn", "os1_voice.brain_server:app", "--host", "0.0.0.0", "--port", "8788"]
+    depends_on:
+      orchestrator:
+        condition: service_healthy
+    environment:
+      OS1_LLM_MODE: ${OS1_LLM_MODE:-free}
+      OS1_CLIENT_TOKEN: ${OS1_CLIENT_TOKEN:?missing}
+      OS1_BRAIN_TOKEN: ${OS1_BRAIN_TOKEN:?missing}
+      ORCHESTRATOR_URL: http://orchestrator:8787
+      OPENCODE_BASE_URL: http://opencode:4096
+      OPENCODE_SERVER_PASSWORD: ${OPENCODE_SERVER_PASSWORD:?missing}
+      OPENROUTER_API_KEYS: ${OPENROUTER_API_KEYS:-}
+      NVIDIA_API_KEYS: ${NVIDIA_API_KEYS:-}
+      GROQ_API_KEYS: ${GROQ_API_KEYS:-}
+      CEREBRAS_API_KEYS: ${CEREBRAS_API_KEYS:-}
+      GOOGLE_API_KEYS: ${GOOGLE_API_KEYS:-}
+      MISTRAL_API_KEYS: ${MISTRAL_API_KEYS:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      TYPESAFE_API_KEY: ${TYPESAFE_API_KEY:-}
+      OS1_FREE_LLM_CATALOG: /app/infra/llm-router/free-llms.json
+    ports:
+      - "127.0.0.1:8788:8788"
+
+  # ------------------------------------------------------------------ OS1 Voice Worker (LiveKit Agents)
+  voice-worker:
+    build:
+      context: .
+      dockerfile: infra/docker/Dockerfile.voice
+    restart: unless-stopped
+    command: ["uv", "run", "python", "-m", "os1_voice.worker", "start"]
+    depends_on:
+      orchestrator:
+        condition: service_healthy
+      livekit:
+        condition: service_started
+    environment:
+      OS1_LLM_MODE: ${OS1_LLM_MODE:-free}
+      OS1_CLIENT_TOKEN: ${OS1_CLIENT_TOKEN:?missing}
+      ORCHESTRATOR_URL: http://orchestrator:8787
+      LIVEKIT_URL: ${LIVEKIT_URL:-ws://livekit:7880}
+      LIVEKIT_API_KEY: ${LIVEKIT_API_KEY:?missing}
+      LIVEKIT_API_SECRET: ${LIVEKIT_API_SECRET:?missing}
+      FISH_API_KEY: ${FISH_API_KEY:-}
+      FISH_OPERATOR_VOICE_ID: ${FISH_OPERATOR_VOICE_ID:-}
+      FISH_VOICE_1_ID: ${FISH_VOICE_1_ID:-}
+      FISH_VOICE_2_ID: ${FISH_VOICE_2_ID:-}
+      OPENCODE_BASE_URL: http://opencode:4096
+      OPENCODE_SERVER_PASSWORD: ${OPENCODE_SERVER_PASSWORD:?missing}
+      OPENROUTER_API_KEYS: ${OPENROUTER_API_KEYS:-}
+      NVIDIA_API_KEYS: ${NVIDIA_API_KEYS:-}
+      GROQ_API_KEYS: ${GROQ_API_KEYS:-}
+      CEREBRAS_API_KEYS: ${CEREBRAS_API_KEYS:-}
+      GOOGLE_API_KEYS: ${GOOGLE_API_KEYS:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      OS1_FREE_LLM_CATALOG: /app/infra/llm-router/free-llms.json
+
+  # ------------------------------------------------------------------ Tailscale Private HTTPS Bridge
+  tailscale:
+    image: tailscale/tailscale:latest
+    restart: unless-stopped
+    hostname: ${TAILSCALE_HOSTNAME:-samantha}
+    environment:
+      TS_AUTHKEY: ${TS_AUTHKEY:-}
+      TS_STATE_DIR: /var/lib/tailscale
+      TS_SERVE_CONFIG: /config/serve.json
+      TS_USERSPACE: "true"
+    volumes:
+      - tailscale_state:/var/lib/tailscale
+      - ./infra/tailscale:/config:ro
+    depends_on:
+      - orchestrator
+      - brain-server
+
+volumes:
+  infisical_pgdata:
+  infisical_redis:
+  os1_state:
+  tailscale_state:

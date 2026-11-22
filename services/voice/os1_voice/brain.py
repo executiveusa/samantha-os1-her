@@ -23,6 +23,7 @@ import anthropic
 from anthropic import AsyncAnthropic
 
 from .config import REPO_ROOT, _env
+from .llm_router import SmartLLMRouter
 
 log = logging.getLogger("os1.brain")
 
@@ -54,15 +55,19 @@ class BrainSettings:
     model: str
     effort: str
     fallbacks: bool
+    llm_mode: str = "hybrid"  # free | hybrid | anthropic
 
     @classmethod
     def from_env(cls) -> BrainSettings:
         model = _env("OS1_FAST_MODEL", "claude-sonnet-5-5")
+        has_anthropic = bool(_env("ANTHROPIC_API_KEY"))
+        default_mode = "hybrid" if has_anthropic else "free"
         return cls(
             model=model,
             effort=_env("OS1_FAST_EFFORT", "low"),
             # Server-side refusal fallback: Claude API, Sonnet/Opus only (Haiku 5.5 has none).
             fallbacks=_env("OS1_FAST_FALLBACKS", "1") == "1" and "haiku" not in model,
+            llm_mode=_env("OS1_LLM_MODE", default_mode).lower(),
         )
 
 
@@ -72,12 +77,19 @@ def persona(engine: Engine) -> str:
 
 
 class Brain:
-    def __init__(self, engine: Engine, settings: BrainSettings | None = None) -> None:
+    def __init__(
+        self,
+        engine: Engine,
+        settings: BrainSettings | None = None,
+        router: SmartLLMRouter | None = None,
+    ) -> None:
         self.engine = engine
         self.settings = settings or BrainSettings.from_env()
-        self._client = AsyncAnthropic(max_retries=1)
+        self._persona_text = persona(engine)
+        self._router = router if router is not None else SmartLLMRouter()
+        self._client = AsyncAnthropic(max_retries=1) if _env("ANTHROPIC_API_KEY") or self.settings.llm_mode == "anthropic" else None
         # Frozen per engine: any byte change here would invalidate the prompt cache.
-        self._system = [{"type": "text", "text": persona(engine), "cache_control": {"type": "ephemeral"}}]
+        self._system = [{"type": "text", "text": self._persona_text, "cache_control": {"type": "ephemeral"}}]
 
     def _thinking(self) -> dict[str, Any]:
         # Lowest-latency setting each model accepts (effort must be `high` or below for both).
@@ -95,6 +107,26 @@ class Brain:
             messages.append({"role": "user", "content": "(silence)"})
         if note:
             messages.append({"role": "system", "content": note})
+
+        # Prefer SmartLLMRouter (OpenRouter :free / NVIDIA NIM / Groq / Cerebras / OpenCode) in free or hybrid-free-first mode.
+        prefer_free = self.settings.llm_mode == "free" or (self.settings.llm_mode == "hybrid" and self._router.has_routes)
+        if prefer_free and self._router.has_routes:
+            try:
+                async for chunk in self._router.stream_chat(
+                    system=self._persona_text,
+                    messages=messages,
+                    max_tokens=1024,
+                ):
+                    yield chunk
+                return
+            except Exception as exc:  # noqa: BLE001
+                log.warning("smart free-LLM router failed (%s); falling back to Anthropic if configured", exc)
+                if self._client is None:
+                    yield "Give me one second, I'm switching models right now."
+                    return
+
+        if self._client is None:
+            self._client = AsyncAnthropic(max_retries=1)
 
         kwargs: dict[str, Any] = {
             "model": self.settings.model,
@@ -132,6 +164,13 @@ class Brain:
             )
         except anthropic.RateLimitError:
             log.warning("brain rate limited")
+            if self._router.has_routes:
+                try:
+                    async for chunk in self._router.stream_chat(system=self._persona_text, messages=messages, max_tokens=1024):
+                        yield chunk
+                    return
+                except Exception as fallback_exc:  # noqa: BLE001
+                    log.debug("free-LLM fallback after rate limit failed: %s", fallback_exc)
             yield "Give me one second, I lost my train of thought."
         except anthropic.APIStatusError as exc:
             log.warning("brain API error %s: %s", exc.status_code, exc.message)

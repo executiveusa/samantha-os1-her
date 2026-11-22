@@ -2,7 +2,10 @@
 .env
 .env.*
 !.env.example
+!*.env.example
 desktop.env
+.vault-staging/
+*_ed25519
 *.pem
 *.key
 *.db
@@ -24,6 +27,7 @@ packages/ui/src/assets/init_sound.mp3
 # node / electron
 node_modules/
 apps/desktop/out/
+apps/desktop/dist-web/
 dist/
 
 # python

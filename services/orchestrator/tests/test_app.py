@@ -13,6 +13,7 @@ def client(tmp_path, monkeypatch):
     monkeypatch.setenv("LIVEKIT_API_KEY", "devkey")
     monkeypatch.setenv("LIVEKIT_API_SECRET", "devsecret-devsecret-devsecret-devsecret")
     monkeypatch.setenv("OS1_CLIENT_TOKEN", "test-token")
+    monkeypatch.setenv("OS1_ENABLE_DEV_RESET", "1")
     import os1_orchestrator.app as app_module
 
     importlib.reload(app_module)

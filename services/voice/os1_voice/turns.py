@@ -85,6 +85,7 @@ class WorkManager:
         self._orch = orch
         self.narrate: NarrateFn | None = narrate
         self.tasks: dict[str, Task] = {}
+        self._bg_tasks: set[asyncio.Task[None]] = set()
 
     def refs(self) -> list[RunRef]:
         return [RunRef(t.run_id, t.label) for t in self.tasks.values() if t.status in ("running", "waiting")]
@@ -107,7 +108,9 @@ class WorkManager:
         label = " ".join(request.split()[:7]).rstrip(".,?!")
         task = self.tasks[run_id] = Task(run_id=run_id, label=label)
         await self._publish()
-        asyncio.ensure_future(self._watch(task))
+        bg = asyncio.create_task(self._watch(task))
+        self._bg_tasks.add(bg)
+        bg.add_done_callback(self._bg_tasks.discard)
         return task
 
     async def _watch(self, task: Task) -> None:

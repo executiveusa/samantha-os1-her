@@ -12,7 +12,7 @@ from dataclasses import dataclass
 from typing import Any
 
 FILLER_PREFIX = re.compile(
-    r"^(?:hey\s+samantha|samantha|okay|ok|yeah|yes|sure|please|can\s+you|could\s+you|go\s+ahead\s+and|just)\s+",
+    r"^(?:hey\s+samantha|samantha|okay|ok|yeah|yes|sure|please|can\s+you|could\s+you|go\s+ahead\s+and|just|take\s+me\s+to|go\s+to|switch\s+to|open\s+up|pull\s+up|show\s+me)\s+(?:the\s+)?",
     re.IGNORECASE,
 )
 
@@ -20,19 +20,20 @@ FILLER_PREFIX = re.compile(
 GLOBAL_PHRASES: list[dict[str, Any]] = [
     {"phrase": "let me drive", "aliases": ["take over", "stop computer use", "give me back my mouse", "hands off"], "target": "cua", "action": "revoke"},
     {"phrase": "undo that", "aliases": ["undo", "take that back", "reverse that"], "target": "undo", "action": "latest"},
-    {"phrase": "show me your computer", "aliases": ["show me her computer", "open your computer", "let me watch your screen"], "target": "surface", "action": "her_computer"},
-    {"phrase": "show me my computer", "aliases": ["what are you doing on my mac", "show my screen activity"], "target": "surface", "action": "your_computer"},
+    {"phrase": "show me your computer", "aliases": ["show me her computer", "open your computer", "let me watch your screen", "cloud", "open cloud", "the cloud", "her computer", "your computer", "vps", "server"], "target": "surface", "action": "her_computer"},
+    {"phrase": "show me my computer", "aliases": ["what are you doing on my mac", "show my screen activity", "my mac", "my computer", "mac", "local computer"], "target": "surface", "action": "your_computer"},
     {"phrase": "connect to gmail", "aliases": ["connect my email", "connect gmail", "link my gmail", "connect my gmail", "connect it to gmail", "connect mail"], "target": "connect", "action": "gmail"},
     {"phrase": "connect my calendar", "aliases": ["connect google calendar", "link my calendar", "connect calendar"], "target": "connect", "action": "googlecalendar"},
     {"phrase": "connect my drive", "aliases": ["connect google drive", "link my files", "connect files"], "target": "connect", "action": "googledrive"},
     {"phrase": "connect slack", "aliases": ["link slack", "connect my slack"], "target": "connect", "action": "slack"},
-    {"phrase": "show me my inbox", "aliases": ["open my inbox", "show my email", "show me my mail", "look through my email", "check my email", "check my inbox"], "target": "inbox", "action": "open_inbox"},
-    {"phrase": "show me what you remember", "aliases": ["open my memories", "show my memories", "show memory"], "target": "surface", "action": "memory"},
-    {"phrase": "show connectors", "aliases": ["show my apps", "open connectors", "what are you connected to"], "target": "surface", "action": "connectors"},
-    {"phrase": "change your voice", "aliases": ["open voice settings", "show voices", "voice settings"], "target": "surface", "action": "voice_picker"},
-    {"phrase": "show everything running", "aliases": ["show swarm", "what are you working on", "show background tasks"], "target": "surface", "action": "swarm"},
-    {"phrase": "go home", "aliases": ["back to home", "clear the screen", "just talk"], "target": "surface", "action": "conversation"},
-    {"phrase": "show desktop", "aliases": ["open home", "show home"], "target": "surface", "action": "home"},
+    {"phrase": "show me my inbox", "aliases": ["open my inbox", "show my email", "show me my mail", "look through my email", "check my email", "check my inbox", "inbox", "my inbox", "emails", "the emails", "my email"], "target": "inbox", "action": "open_inbox"},
+    {"phrase": "show me what you remember", "aliases": ["open my memories", "show my memories", "show memory", "memory", "memories", "my memory"], "target": "surface", "action": "memory"},
+    {"phrase": "show canvas", "aliases": ["canvas", "open canvas", "made just now", "generative ui"], "target": "surface", "action": "made_just_now"},
+    {"phrase": "show connectors", "aliases": ["show my apps", "open connectors", "what are you connected to", "connectors", "apps", "vault", "integrations"], "target": "surface", "action": "connectors"},
+    {"phrase": "change your voice", "aliases": ["open voice settings", "show voices", "voice settings", "voices", "voice picker"], "target": "surface", "action": "voice_picker"},
+    {"phrase": "show everything running", "aliases": ["show swarm", "what are you working on", "show background tasks", "swarm", "agents", "maus bots", "bots"], "target": "surface", "action": "swarm"},
+    {"phrase": "go home", "aliases": ["back to home", "clear the screen", "just talk", "talk", "back to talking", "conversation", "go to talk"], "target": "surface", "action": "conversation"},
+    {"phrase": "show desktop", "aliases": ["open home", "show home", "home", "desktop"], "target": "surface", "action": "home"},
     {"phrase": "a little warmer", "aliases": ["sound warmer", "warmer voice"], "target": "voice_tweak", "action": "warmer"},
     {"phrase": "slow down", "aliases": ["speak slower", "a little slower"], "target": "voice_tweak", "action": "slower"},
     {"phrase": "a little faster", "aliases": ["speed up", "speak faster"], "target": "voice_tweak", "action": "faster"},
