@@ -46,7 +46,7 @@ export function Preflight({
   return (
     <form onSubmit={submit} style={{ display: "grid", justifyItems: "center", gap: 36 }} className="os1-fade">
       <div className="os1-display" style={{ fontSize: 64 }}>
-        OS<sup style={{ fontSize: 22, verticalAlign: "top" }}>1</sup>
+        Synthia
       </div>
       <label style={{ display: "grid", justifyItems: "center", gap: 14 }}>
         <span className="os1-label" style={{ color: "var(--on-coral-dim)" }}>
@@ -87,7 +87,7 @@ export function Preflight({
         {busy ? "Starting…" : "Begin"}
       </button>
       <p className="os1-label" style={{ fontSize: 11, color: "var(--on-coral-dim)", maxWidth: 420, textAlign: "center" }}>
-        OS1 listens through your microphone. You'll be asked to allow it.
+        Synthia listens through your microphone. You'll be asked to allow it.
       </p>
       {error && <p style={{ color: "var(--paper)", font: "300 15px var(--font-sans)" }}>{error}</p>}
     </form>
@@ -101,7 +101,7 @@ export function Boot({ levels }: { levels: Levels }) {
     <>
       <div style={{ ...corner("tl"), display: "flex", alignItems: "baseline", gap: 18, color: "var(--on-coral)" }}>
         <span style={{ font: "200 30px var(--font-sans)" }}>
-          OS<sup style={{ fontSize: 13 }}>1</sup>
+          Synthia
         </span>
         <span className="os1-mono">Build 1.0</span>
       </div>
@@ -112,7 +112,7 @@ export function Boot({ levels }: { levels: Levels }) {
         <Presence state="listening" getLevel={() => levels.current.agent * 0.4} size={360} />
         <Progress fraction={0.05} animate seconds={14} />
         <span className="os1-label" style={{ fontSize: 11 }}>
-          Initializing your OS¹
+          Initializing Synthia
         </span>
       </div>
       <div className="os1-mono" style={corner("bl")}>
@@ -228,7 +228,7 @@ export function Waking({ levels }: { levels: Levels }) {
       ) : (
         <canvas
           ref={canvasRef}
-          aria-label="Initiating OS1"
+          aria-label="Initiating Synthia"
           style={{
             width: 340,
             height: 340,
@@ -273,7 +273,7 @@ export function Conversation({
     <>
       <div className="os1-label" style={{ ...corner("tl"), display: "flex", gap: 14, alignItems: "center" }}>
         <span style={{ width: 7, height: 7, borderRadius: "50%", background: "var(--paper)" }} />
-        <span style={{ color: "var(--on-coral)" }}>Samantha</span>
+        <span style={{ color: "var(--on-coral)" }}>Synthia</span>
         <span>{statusWord}</span>
       </div>
       <div className="os1-label" style={corner("tr")}>
@@ -315,7 +315,7 @@ export function Naming({ state, onSay }: { state: Os1State; onSay: (p: string) =
       <div className="os1-lead" style={{ color: "var(--on-coral-dim)", fontSize: 26 }}>
         {state.userLine && `“${state.userLine}”`}
       </div>
-      <div style={{ font: "400 220px/1.1 var(--font-sign)", color: "var(--paper)", marginTop: -10 }}>Samantha</div>
+      <div style={{ font: "400 220px/1.1 var(--font-sign)", color: "var(--paper)", marginTop: -10 }}>Synthia</div>
       <div className="os1-lead" style={{ maxWidth: 560, color: "var(--on-coral)", minHeight: 64 }}>
         {state.agentLine}
       </div>

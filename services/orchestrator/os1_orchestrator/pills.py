@@ -12,7 +12,7 @@ from dataclasses import dataclass
 from typing import Any
 
 FILLER_PREFIX = re.compile(
-    r"^(?:hey\s+samantha|samantha|okay|ok|yeah|yes|sure|please|can\s+you|could\s+you|go\s+ahead\s+and|just|take\s+me\s+to|go\s+to|switch\s+to|open\s+up|pull\s+up|show\s+me)\s+(?:the\s+)?",
+    r"^(?:hey\s+synthia|synthia|hey\s+samantha|samantha|okay|ok|yeah|yes|sure|please|can\s+you|could\s+you|go\s+ahead\s+and|just|take\s+me\s+to|go\s+to|switch\s+to|open\s+up|pull\s+up|show\s+me)\s+(?:the\s+)?",
     re.IGNORECASE,
 )
 

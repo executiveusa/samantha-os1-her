@@ -1,7 +1,7 @@
 {
-  "name": "Samantha OS1",
-  "short_name": "OS1",
-  "description": "Her-inspired voice-first personal operating system running 24/7 over Tailscale",
+  "name": "Synthia",
+  "short_name": "Synthia",
+  "description": "Synthia — Bambu's voice-first personal operating system running 24/7",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#CD4F33",
