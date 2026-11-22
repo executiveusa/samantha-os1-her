@@ -70,6 +70,9 @@ plugins:
     - os1_user_computer
     - os1_pstack
     - os1_ops
+    - os1_wiki
+    - os1_github
+    - os1_vision
   entries:
     fish-audio:
       settings:

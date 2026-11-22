@@ -32,17 +32,21 @@ from .bus import StateHub
 from .cards import CanvasPayload, validate_cards
 from .composio_client import ComposioClient
 from .director import MEMORY_THRESHOLD, JevDirector
+from .github_graph import GitHubGraphEngine
 from .ops_bridge import OpsBridge
 from .pills import match_pill
 from .pstack_engine import PstackSelfUpdater, route_poteto_mode
 from .store import CONNECTOR_POLICIES, DEFAULT_PROFILE, MEMORY_CATEGORIES, Os1Store
 from .vault import InfisicalVault
+from .vision_bridge import VisionClawBridge
+from .wiki import WikiStore
 
 if os.environ.get("OS1_SKIP_DOTENV") != "1":
     load_dotenv(Path(__file__).resolve().parents[3] / ".env")
 log = logging.getLogger("os1.orchestrator")
 
-STATE_DIR = Path(os.environ.get("OS1_STATE_DIR", Path.home() / ".os1"))
+_DEFAULT_STATE_DIR = Path("/tmp/.os1") if os.environ.get("VERCEL") == "1" else Path.home() / ".os1"
+STATE_DIR = Path(os.environ.get("OS1_STATE_DIR", _DEFAULT_STATE_DIR))
 PROFILE = STATE_DIR / "profile.json"
 AGENT_NAME = os.environ.get("OS1_AGENT_NAME", "os1-samantha")
 CLIENT_TOKEN = os.environ.get("OS1_CLIENT_TOKEN", "")
@@ -53,6 +57,9 @@ HERMES_API_KEY = os.environ.get("HERMES_API_KEY", "")
 VNC_UPSTREAM_WS = os.environ.get("OS1_VNC_UPSTREAM_WS", "ws://127.0.0.1:6080/websockify")
 
 store = Os1Store(STATE_DIR)
+wiki = WikiStore(STATE_DIR)
+github_graph = GitHubGraphEngine()
+vision_bridge = VisionClawBridge()
 hub = StateHub(store)
 director = JevDirector()
 composio = ComposioClient()
@@ -100,7 +107,7 @@ _extra_origins = [o.strip() for o in os.environ.get("OS1_ALLOWED_ORIGINS", "").s
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:5173", "http://127.0.0.1:5173", "app://os1", "file://", *_extra_origins],
-    allow_origin_regex=r"https?://(localhost|127\.0\.0\.1|100\.\d+\.\d+\.\d+|[a-zA-Z0-9.-]+\.ts\.net)(:\d+)?$",
+    allow_origin_regex=r"https?://(localhost|127\.0\.0\.1|100\.\d+\.\d+\.\d+|[a-zA-Z0-9.-]+\.ts\.net|[a-zA-Z0-9.-]+\.vercel\.app)(:\d+)?$",
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -167,6 +174,9 @@ def health() -> dict[str, Any]:
         "pstack": pstack_updater.status()["installed"],
         "opencode": pstack_updater.status()["opencode_configured"],
         "hostinger": ops_bridge.status()["hostinger_api_configured"],
+        "wiki_db": str(wiki.db_path),
+        "github": github_graph.configured,
+        "visionclaw": True,
     }
 
 
@@ -1253,6 +1263,166 @@ async def pstack_run(req: PstackRunRequest) -> dict[str, Any]:
     )
     await hub.broadcast()
     return res
+
+
+# ------------------------------------------------------------------ Second Brain SQLite LLM Wiki & Knowledge Graph
+
+
+class WikiPageUpsertRequest(BaseModel):
+    slug: str
+    title: str
+    body: str
+    kind: str = "note"
+    tags: list[str] = Field(default_factory=list)
+    source_path: str = ""
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class WikiIngestRequest(BaseModel):
+    directory: str | None = None
+    kind: str = "second_brain"
+    max_files: int = 300
+
+
+@app.get("/os1/wiki/pages", dependencies=authed)
+def wiki_list_pages(kind: str | None = None, limit: int = 100) -> dict[str, Any]:
+    return {"pages": wiki.list_pages(kind=kind, limit=limit)}
+
+
+@app.get("/os1/wiki/page/{slug:path}", dependencies=authed)
+def wiki_get_page(slug: str) -> dict[str, Any]:
+    page = wiki.get_page(slug)
+    if page is None:
+        raise HTTPException(404, f"Wiki page not found: {slug}")
+    return page
+
+
+@app.post("/os1/wiki/pages", dependencies=authed)
+async def wiki_upsert_page(req: WikiPageUpsertRequest) -> dict[str, Any]:
+    saved = wiki.upsert_page(
+        slug=req.slug,
+        title=req.title,
+        body=req.body,
+        kind=req.kind,
+        source_path=req.source_path,
+        tags=req.tags,
+        metadata=req.metadata,
+    )
+    store.add_activity(source="wiki", title=f"Updated wiki: {saved['title']}", detail=saved["slug"], status="done")
+    await hub.broadcast()
+    return saved
+
+
+@app.post("/os1/wiki/ingest", dependencies=authed)
+async def wiki_ingest(req: WikiIngestRequest) -> dict[str, Any]:
+    default_dir = os.environ.get("OS1_SECOND_BRAIN_DIR") or str(Path(__file__).resolve().parents[3] / "icm")
+    target = Path(req.directory or default_dir)
+    res = wiki.ingest_directory(target, kind=req.kind, max_files=req.max_files)
+    if not res.get("ok"):
+        raise HTTPException(400, res.get("error", "Ingest failed"))
+    store.add_activity(source="wiki", title=f"Ingested {res['ingested']} Second Brain notes", detail=str(target), status="done")
+    await hub.broadcast()
+    return res
+
+
+@app.get("/os1/wiki/search", dependencies=authed)
+def wiki_search(q: str, limit: int = 12) -> dict[str, Any]:
+    return {"query": q, "results": wiki.search(q, limit=limit)}
+
+
+@app.get("/os1/wiki/graph", dependencies=authed)
+def wiki_graph() -> dict[str, Any]:
+    return wiki.get_graph()
+
+
+@app.get("/os1/wiki/connections", dependencies=authed)
+def wiki_connections(limit: int = 10) -> dict[str, Any]:
+    return {"recommendations": wiki.recommend_connections(limit=limit)}
+
+
+# ------------------------------------------------------------------ Full GitHub Access & Cross-Project Graph
+
+
+@app.get("/os1/github/repos", dependencies=authed)
+async def github_list_repos(limit: int = 100) -> dict[str, Any]:
+    try:
+        repos = await github_graph.list_repos(limit=limit)
+    except Exception as exc:
+        raise HTTPException(502, f"GitHub API error: {exc}") from exc
+    return {"owner": github_graph.owner, "authenticated": github_graph.configured, "count": len(repos), "repos": repos}
+
+
+@app.post("/os1/github/sync-wiki", dependencies=authed)
+async def github_sync_wiki(limit: int = 100) -> dict[str, Any]:
+    try:
+        res = await github_graph.sync_repos_to_wiki(wiki, limit=limit)
+    except Exception as exc:
+        raise HTTPException(502, f"GitHub sync failed: {exc}") from exc
+    store.add_activity(
+        source="github",
+        title=f"Indexed {res['repos_indexed']} GitHub repos into wiki",
+        detail=f"{res['edges_added']} cross-repo edges",
+        status="done",
+    )
+    await hub.broadcast()
+    return res
+
+
+@app.get("/os1/github/connections", dependencies=authed)
+def github_connections(limit: int = 12) -> dict[str, Any]:
+    return {
+        "owner": github_graph.owner,
+        "graph": wiki.get_graph()["stats"],
+        "recommendations": wiki.recommend_connections(limit=limit),
+    }
+
+
+# ------------------------------------------------------------------ VisionClaw AX-022 (Glasses + Laptop Camera + Holo Gestures)
+
+
+class VisionGestureRequest(BaseModel):
+    gesture: str | None = None
+    landmarks: list[dict[str, float]] | None = None
+    source: str = "laptop_camera"
+
+
+class VisionFrameRequest(BaseModel):
+    source: str = "laptop_camera"
+    width: int = 0
+    height: int = 0
+    summary: str = ""
+
+
+@app.get("/os1/vision/status", dependencies=authed)
+def vision_status() -> dict[str, Any]:
+    return vision_bridge.status()
+
+
+@app.post("/os1/vision/frame", dependencies=authed)
+def vision_frame(req: VisionFrameRequest) -> dict[str, Any]:
+    return vision_bridge.record_frame(source=req.source, width=req.width, height=req.height, summary=req.summary)
+
+
+@app.post("/os1/vision/gesture", dependencies=authed)
+async def vision_gesture(req: VisionGestureRequest) -> dict[str, Any]:
+    ev = vision_bridge.resolve_gesture(
+        gesture=req.gesture,
+        landmarks=req.landmarks,
+        source=req.source,
+        active_surface=hub.active_surface,
+    )
+    if not ev.get("matched"):
+        return ev
+    if ev["target"] in ("surface", "cua"):
+        await _dispatch_matched(ev["target"], ev["action"], {}, phrase=ev["gesture"])
+    store.add_activity(
+        source="visionclaw",
+        title=f"Holo gesture: {ev['gesture']} ({ev['source']})",
+        detail=ev["reply"],
+        status="done",
+    )
+    await hub.broadcast()
+    return ev
 
 
 # ------------------------------------------------------------------ 24/7 Web / PWA Static Mount (optional)

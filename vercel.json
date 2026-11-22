@@ -1,0 +1,55 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "services": {
+    "desktop": {
+      "root": "apps/desktop",
+      "framework": "vite",
+      "buildCommand": "npm run build:web",
+      "outputDirectory": "dist-web"
+    },
+    "orchestrator": {
+      "root": "services/orchestrator",
+      "framework": "fastapi",
+      "entrypoint": "os1_orchestrator/app.py"
+    },
+    "voice": {
+      "root": "services/voice",
+      "framework": "fastapi",
+      "entrypoint": "os1_voice/brain_server.py",
+      "bindings": [
+        {
+          "type": "service",
+          "service": "orchestrator",
+          "format": "url",
+          "env": "ORCHESTRATOR_URL"
+        }
+      ]
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/v1/chat/completions",
+      "destination": { "service": "voice" }
+    },
+    {
+      "source": "/os1/sessions/(.*)",
+      "destination": { "service": "voice" }
+    },
+    {
+      "source": "/voice/health",
+      "destination": { "service": "voice" }
+    },
+    {
+      "source": "/os1/(.*)",
+      "destination": { "service": "orchestrator" }
+    },
+    {
+      "source": "/health",
+      "destination": { "service": "orchestrator" }
+    },
+    {
+      "source": "/(.*)",
+      "destination": { "service": "desktop" }
+    }
+  ]
+}

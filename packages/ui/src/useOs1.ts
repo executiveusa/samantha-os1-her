@@ -249,8 +249,9 @@ export function useOs1(config: Os1Config) {
         r.remoteParticipants.forEach(readAgent);
         if (engine.current === "live3") {
           setState((s) => ({ ...s, phase: "active" }));
-          if (t.brain_url && t.session_id) {
-            const pollUrl = `${t.brain_url}/os1/sessions/${t.session_id}/poll`;
+          if (t.session_id) {
+            const brainBase = (t.brain_url || config.orchestratorUrl).replace(/\/$/, "");
+            const pollUrl = `${brainBase}/os1/sessions/${t.session_id}/poll`;
             const headers = config.clientToken ? { Authorization: `Bearer ${config.clientToken}` } : undefined;
             const timer = window.setInterval(async () => {
               try {

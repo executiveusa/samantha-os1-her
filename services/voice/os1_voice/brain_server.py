@@ -162,6 +162,7 @@ async def _fixed(text: str) -> AsyncIterator[str]:
 
 
 @app.get("/health")
+@app.get("/voice/health")
 def health() -> dict[str, Any]:
     return {"ok": True, "engine": "live3", "model": brain.settings.model, "sessions": len(SESSIONS)}
 

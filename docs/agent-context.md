@@ -11,6 +11,9 @@
 - **Lauren Tan's `pstack` Framework:** `.pstack/principles.md`, `.pstack/playbooks.yaml`, `services/orchestrator/os1_orchestrator/pstack_engine.py`, `hermes/plugins/os1_pstack/`.
 - **Tailscale + Hostinger + Maus Bots Bridge:** `services/orchestrator/os1_orchestrator/ops_bridge.py`, `hermes/plugins/os1_ops/`, `infra/tailscale/`, `infra/hostinger/deploy-hostinger.sh`, `infra/hostinger/maus-bots.json`.
 - **Web/PWA 24/7 Client:** `apps/desktop/vite.web.config.ts`, `manifest.webmanifest`, `sw.js`, served from orchestrator when `apps/desktop/dist-web` exists.
+- **Vercel Multi-Service Config:** `vercel.json` at repo root with `desktop` (Vite `dist-web`), `orchestrator` (FastAPI `os1_orchestrator/app.py`), and `voice` (FastAPI `os1_voice/brain_server.py` with `ORCHESTRATOR_URL` service binding).
+- **Bambu Identity + ICM Architecture:** Default collaborator is **Bambu** (*Bambú*); full ICM workspace in `icm/` (`icm/CONTEXT.md`, `icm/_shared/ICM_RULES.md`, `icm/skills/icm-architect/`, `icm/stages/01_inspect..05_release/`) enforced in `pstack_engine.py` and `AGENTS.md`.
+- **Second Brain SQLite LLM Wiki + Full GitHub Graph + VisionClaw AX-022:** `wiki.py` (`wiki.db` FTS5 + `[[wikilinks]]` + graph connection recommender), `github_graph.py` (full `executiveusa` repo indexing + cross-project graph reasoning), `vision_bridge.py` + `useVisionClaw.ts` (smart glasses + laptop webcam holo-gestures under ICM L0-L4 policy gates), plus Hermes plugins `os1_wiki`, `os1_github`, `os1_vision`.
 
 ## Validation Commands
 - `(cd services/orchestrator && uv run pytest -q)`

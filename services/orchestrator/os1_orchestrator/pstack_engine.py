@@ -104,6 +104,10 @@ class PstackSelfUpdater:
             f"Run pstack playbook `{brief['playbook']}` on branch `{brief['branch']}`.\n"
             f"Goal: {goal}\n"
             f"Principles: {', '.join(brief['principles'])}\n"
+            "ICM Architecture Mandate (NON-NEGOTIABLE): All code and folders written MUST follow "
+            "the 10 ICM invariants in `icm/_shared/ICM_RULES.md` and `icm/skills/icm-architect/SKILL.md` "
+            "(one folder one job, explicit CONTEXT.md contracts, small root catalog, [[wikilinks]] + YAML frontmatter, "
+            "factory vs product separation, filesystem as state machine).\n"
             f"Verification gates (must all pass): {'; '.join(brief['required_gates'])}"
         )
         try:
