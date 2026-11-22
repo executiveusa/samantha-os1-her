@@ -175,7 +175,7 @@ command -v uv >/dev/null || (curl -LsSf https://astral.sh/uv/install.sh | sh >/d
 command -v cloudflared >/dev/null || (curl -sSL -o /usr/local/bin/cloudflared \\
   https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 && chmod +x /usr/local/bin/cloudflared)
 (cd /opt/os1/services/orchestrator && uv sync -q --frozen)
-(cd /opt/os1/services/voice && uv sync -q --frozen)
+(cd /opt/os1/services/voice && uv sync -q --frozen --extra worker)
 cp /opt/os1/hermes/profile/config.yaml /root/.hermes/config.yaml
 cp /opt/os1/hermes/profile/SOUL.md /root/.hermes/SOUL.md
 mkdir -p /root/.hermes/plugins

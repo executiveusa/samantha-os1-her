@@ -6,12 +6,16 @@ dependencies = [
     "anthropic>=2.12.0",
     "fastapi>=0.165.0",
     "httpx>=0.28.1",
-    "livekit-agents[deepgram,fishaudio,openai,silero,turn-detector]>=1.8.13",
     "livekit-api>=1.2.3",
     "python-dotenv>=1.2.4",
     "pyyaml>=6.0.4",
     "typesafe-sdk>=0.7.5",
     "uvicorn[standard]>=0.54.0",
+]
+
+[project.optional-dependencies]
+worker = [
+    "livekit-agents[deepgram,fishaudio,openai,silero,turn-detector]>=1.8.13",
 ]
 
 [dependency-groups]
