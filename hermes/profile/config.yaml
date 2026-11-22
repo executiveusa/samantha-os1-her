@@ -1,0 +1,65 @@
+# Hermes profile for OS1 / Samantha.
+# Installed to ~/.hermes/profiles/samantha/config.yaml by hermes/install-profile.sh.
+# Secrets live in ~/.hermes/profiles/samantha/.env (see hermes/profile/env.example).
+#
+# Schema checked against hermes-agent 2026.9.24 (cli-config.yaml.example).
+
+# --- Main brain: everything Hermes does by default (delegated work, cron, memory curation) ---
+model:
+  default: "claude-opus-5-5"
+  provider: "anthropic"            # ANTHROPIC_API_KEY
+
+# --- Long-term memory ---
+# Built-in MEMORY.md / USER.md / session search are always on.
+# Honcho stays OFF until we confirm it can delete derived conclusions (docs/architecture.md §9).
+# memory:
+#   provider: honcho
+
+# --- API server: the only way the voice worker and orchestrator talk to Hermes ---
+platforms:
+  api_server:
+    enabled: true
+    extra:
+      host: "127.0.0.1"            # reached through a tunnel, never exposed directly
+      port: 8642
+      model_name: "samantha"
+      # key comes from API_SERVER_KEY in .env
+      # The voice worker uses a stock OpenAI client: Hermes's custom `hermes.tool.progress`
+      # SSE frames (choices: null) crash it. Progress comes from /v1/runs events instead.
+      tool_progress_events: false
+      model_routes:
+        # Spoken turns from the voice worker: fastest time-to-first-token, reasoning off
+        # (the worker also sends model_options.reasoning.enabled=false).
+        # Gemini Neon 4 was rate-limited on Google AI Studio (2026-11-22); Sonnet 5.5 until the
+        # slice-1 latency test picks a winner. To try Gemini: model "gemini-4-neon", provider "gemini".
+        samantha-voice:
+          model: "claude-sonnet-5-5"
+          provider: "anthropic"
+        # Delegated background work (/v1/runs from the voice worker).
+        samantha-work:
+          model: "claude-opus-5-5"
+          provider: "anthropic"
+
+# --- Voice output for Hermes-native surfaces only (CLI testing, cron voice notes) ---
+# Live conversation TTS runs in services/voice over Fish's WebSocket, not here,
+# because Hermes's text normalizer mangles Drama 3 tags (upstream #133131).
+tts:
+  provider: fish-audio
+  fish-audio:
+    voice: REPLACE_WITH_FISH_VOICE_1_ID
+    model: drama-3
+    latency: balanced
+    temperature: 0.72
+
+plugins:
+  enabled:
+    - fish-audio
+    - os1_ui
+    - os1_memory
+    - os1_composio
+    - os1_user_computer
+  entries:
+    fish-audio:
+      settings:
+        streaming: auto
+        allow_free_model: false

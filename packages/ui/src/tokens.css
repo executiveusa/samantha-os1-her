@@ -1,0 +1,215 @@
+/* OS1 design tokens — Paper file "OS1 — Her · Claude's take" (final pass). */
+@import "@fontsource/dm-sans/200.css";
+@import "@fontsource/dm-sans/300.css";
+@import "@fontsource/dm-sans/400.css";
+@import "@fontsource/dm-sans/500.css";
+@import "@fontsource/dm-sans/200-italic.css";
+@import "@fontsource/dm-sans/300-italic.css";
+@import "@fontsource/dm-mono/400.css";
+@import "@fontsource/mrs-saint-delafield/400.css";
+
+:root {
+  --coral: #cd4f33;
+  --coral-deep: #a84832;
+  --coral-glow: #e06a4c;
+  --cream: #d4bc9a;
+  --studio: #edd7bd;
+  --paper: #fffdf9;
+  --ink: #38281e;
+  --ink-dim: rgba(56, 40, 30, 0.62);
+  --ink-faint: rgba(56, 40, 30, 0.16);
+  --plum: #8a5866;
+  --cobalt: #4a78c8;
+  --mustard: #d9a53a;
+  --sage: #8fa88f;
+  --teal: #3a9a96;
+  --crimson: #a8273c;
+
+  --on-coral: #fffdf9;
+  --on-coral-dim: rgba(255, 253, 249, 0.66);
+  --on-coral-faint: rgba(255, 253, 249, 0.30);
+
+  --font-sans: "DM Sans", system-ui, sans-serif;
+  --font-mono: "DM Mono", ui-monospace, monospace;
+  --font-sign: "Mrs Saint Delafield", cursive;
+
+  --ease-soft: cubic-bezier(0.22, 0.61, 0.36, 1);
+  color-scheme: light;
+}
+
+* { box-sizing: border-box; }
+
+html, body, #root {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: var(--coral);
+  color: var(--on-coral);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Coral surface: glowing center, deeper edges (Paper vignette). */
+.os1-coral {
+  position: fixed;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 60% 55% at 50% 42%, var(--coral-glow) 0%, transparent 70%),
+    radial-gradient(ellipse 120% 100% at 50% 50%, var(--coral) 45%, var(--coral-deep) 100%);
+  display: grid;
+  place-items: center;
+  user-select: none;
+}
+
+.os1-label {
+  font-family: var(--font-sans);
+  font-weight: 500;
+  font-size: 12px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.os1-mono {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.os1-display { font-weight: 200; font-size: 72px; line-height: 72px; letter-spacing: -0.02em; }
+.os1-spoken { font-weight: 200; font-size: 44px; line-height: 58px; letter-spacing: -0.01em; }
+.os1-lead { font-weight: 300; font-size: 22px; line-height: 32px; }
+.os1-heard { font-weight: 300; font-style: italic; font-size: 18px; color: var(--on-coral-dim); }
+
+.os1-fade { animation: os1-fade 600ms var(--ease-soft) both; }
+@keyframes os1-fade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+@keyframes os1-float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-9px); }
+}
+
+@keyframes os1-pulse-ring {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255, 253, 249, 0.32); }
+  50% { box-shadow: 0 0 0 10px rgba(255, 253, 249, 0); }
+}
+
+input::placeholder { color: var(--on-coral-faint); }
+
+/* Surfaces arrive softly: fade + a breath of blur, like focusing your eyes. */
+.os1-surface {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  animation: os1-surface-in 750ms var(--ease-soft) both;
+}
+@keyframes os1-surface-in { from { opacity: 0; filter: blur(6px); } to { opacity: 1; filter: none; } }
+
+/* Warm tactile paper card used by Paper 07–15 surfaces */
+.os1-paper-card {
+  background: var(--paper);
+  color: var(--ink);
+  border-radius: 22px;
+  box-shadow: 0 24px 64px rgba(56, 20, 10, 0.24), 0 2px 6px rgba(56, 20, 10, 0.08);
+}
+
+.os1-studio-card {
+  background: rgba(237, 215, 189, 0.94);
+  color: var(--ink);
+  border-radius: 20px;
+  box-shadow: 0 18px 48px rgba(56, 20, 10, 0.18);
+}
+
+.os1-glass {
+  background: rgba(255, 253, 249, 0.12);
+  border: 1px solid rgba(255, 253, 249, 0.24);
+  backdrop-filter: blur(18px);
+  border-radius: 20px;
+  color: var(--paper);
+}
+
+.os1-pill {
+  padding: 9px 18px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 253, 249, 0.34);
+  background: rgba(255, 253, 249, 0.10);
+  color: var(--paper);
+  font: 400 14px var(--font-sans);
+  cursor: pointer;
+  transition: background 180ms ease, border-color 180ms ease, transform 180ms ease;
+}
+.os1-pill:hover { background: rgba(255, 253, 249, 0.22); border-color: rgba(255, 253, 249, 0.65); }
+.os1-pill:active { transform: scale(0.97); }
+
+.os1-pill-ink {
+  padding: 9px 18px;
+  border-radius: 999px;
+  border: 1px solid var(--ink-faint);
+  background: rgba(56, 40, 30, 0.05);
+  color: var(--ink);
+  font: 400 14px var(--font-sans);
+  cursor: pointer;
+  transition: background 180ms ease, border-color 180ms ease, transform 180ms ease;
+}
+.os1-pill-ink:hover { background: rgba(56, 40, 30, 0.11); border-color: rgba(56, 40, 30, 0.35); }
+.os1-pill-ink.primary { background: var(--coral); color: var(--paper); border-color: transparent; }
+.os1-pill-ink.primary:hover { background: var(--coral-deep); }
+.os1-pill-ink.danger { background: var(--crimson); color: var(--paper); border-color: transparent; }
+
+.os1-scroll {
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 253, 249, 0.25) transparent;
+}
+
+.os1-toast {
+  position: fixed; top: 22px; left: 50%; transform: translateX(-50%);
+  padding: 6px 16px; border-radius: 999px; background: rgba(29, 10, 5, 0.42);
+  backdrop-filter: blur(12px);
+  font: 500 11px var(--font-sans); letter-spacing: 0.18em; text-transform: uppercase; color: var(--paper);
+  animation: os1-fade 300ms var(--ease-soft) both;
+  z-index: 60;
+}
+
+/* Quiet bottom whisper dock so surfaces are reachable by voice OR pointer without cluttering coral */
+.os1-dock {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(56, 20, 10, 0.22);
+  border: 1px solid rgba(255, 253, 249, 0.16);
+  backdrop-filter: blur(16px);
+  opacity: 0.56;
+  transition: opacity 240ms var(--ease-soft), background 240ms var(--ease-soft);
+  z-index: 30;
+}
+.os1-dock:hover {
+  opacity: 1;
+  background: rgba(56, 20, 10, 0.36);
+}
+.os1-dock button {
+  padding: 5px 12px;
+  border-radius: 999px;
+  border: none;
+  background: transparent;
+  color: var(--on-coral-dim);
+  font: 500 11px var(--font-sans);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 160ms ease, color 160ms ease;
+}
+.os1-dock button:hover { color: var(--paper); background: rgba(255, 253, 249, 0.14); }
+.os1-dock button[data-active="true"] { background: rgba(255, 253, 249, 0.22); color: var(--paper); }
+
+@media (prefers-reduced-motion: reduce) {
+  .os1-fade, .os1-surface { animation: none; }
+}

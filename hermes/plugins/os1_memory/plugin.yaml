@@ -1,0 +1,9 @@
+name: os1_memory
+title: OS1 Memory Ledger
+version: "0.1.0"
+description: "Save dated moments into the OS1 Memory Ledger and perform true forget cascades across ledger + Hermes files."
+capabilities:
+  provides_tools:
+    - os1_remember
+    - os1_forget
+    - os1_list_memories

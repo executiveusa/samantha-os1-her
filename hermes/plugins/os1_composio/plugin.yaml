@@ -1,0 +1,8 @@
+name: os1_composio
+title: OS1 Composio Connectors
+version: "0.1.0"
+description: "Composio SDK wrapper enforcing OS1 runtime per-app connector policies and feeding the Spatial Inbox."
+capabilities:
+  provides_tools:
+    - os1_composio_action
+    - os1_composio_sync_inbox

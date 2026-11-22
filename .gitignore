@@ -1,0 +1,37 @@
+# secrets & local state
+.env
+.env.*
+!.env.example
+desktop.env
+*.pem
+*.key
+*.db
+*.sqlite
+*.sqlite3
+*.sqlite-journal
+*.sqlite-wal
+.os1/
+os1state*/
+
+# deploy / transfer bundles & logs
+*.tgz
+*.b64
+*.log
+
+# optional local audio asset (not distributed in public repo)
+packages/ui/src/assets/init_sound.mp3
+
+# node / electron
+node_modules/
+apps/desktop/out/
+dist/
+
+# python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+
+# os
+.DS_Store

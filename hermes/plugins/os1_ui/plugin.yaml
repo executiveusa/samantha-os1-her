@@ -1,0 +1,9 @@
+name: os1_ui
+title: OS1 Generative UI
+version: "0.1.0"
+description: "Present validated OS1 Made-Just-Now cards, switch surfaces, and log Her Computer activity."
+capabilities:
+  provides_tools:
+    - os1_present_canvas
+    - os1_show_surface
+    - os1_log_activity

@@ -1,0 +1,7 @@
+name: os1_user_computer
+title: OS1 User Computer (Cua Driver Tunnel)
+version: "0.1.0"
+description: "Last-resort bounded computer use on the user's own Mac via the outbound authenticated Cua Driver tunnel."
+capabilities:
+  provides_tools:
+    - os1_user_computer
