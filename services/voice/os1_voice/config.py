@@ -23,7 +23,7 @@ class Voice:
     key: str
     label: str
     reference_id: str
-    model: str = "drama-3"
+    model: str = "s2.1-pro-free"
     speed: float = 1.0
     temperature: float = 0.7
 
@@ -31,12 +31,14 @@ class Voice:
 def voices() -> dict[str, Voice]:
     """Voice registry. Each LiveKit Agent gets its own TTS, so swapping voices mid-session
     (operator -> Samantha, or Voice I -> Voice II) is an agent handoff in the same room."""
+    tts_model = _env("FISH_TTS_MODEL", "s2.1-pro-free")
     return {
         # The onboarding operator: neutral, measured, clearly not Samantha.
         "operator": Voice(
             key="operator",
             label="Operator",
             reference_id=_env("FISH_OPERATOR_VOICE_ID"),
+            model=tts_model,
             speed=0.98,
             temperature=0.55,
         ),
@@ -44,6 +46,7 @@ def voices() -> dict[str, Voice]:
             key="voice_1_warm",
             label="Voice I",
             reference_id=_env("FISH_VOICE_1_ID"),
+            model=tts_model,
             speed=0.96,
             temperature=0.72,
         ),
@@ -51,6 +54,7 @@ def voices() -> dict[str, Voice]:
             key="voice_2_bright",
             label="Voice II",
             reference_id=_env("FISH_VOICE_2_ID"),
+            model=tts_model,
             speed=1.05,
             temperature=0.65,
         ),
@@ -59,6 +63,7 @@ def voices() -> dict[str, Voice]:
             key="voice_male",
             label="Voice (male)",
             reference_id=_env("FISH_VOICE_MALE_ID"),
+            model=tts_model,
             speed=1.0,
             temperature=0.7,
         ),
