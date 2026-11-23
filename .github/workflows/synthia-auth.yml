@@ -6,6 +6,7 @@ on:
       - "apps/desktop/**"
       - "packages/ui/**"
       - "services/**"
+      - "scripts/smoke_synthia_live3.py"
       - "tests/test_web_auth.py"
       - ".github/workflows/synthia-auth.yml"
   push:
@@ -32,5 +33,5 @@ jobs:
         with:
           python-version: "3.12"
       - run: python -m pip install pytest
-      - run: python -m compileall -q services
+      - run: python -m compileall -q services scripts/smoke_synthia_live3.py
       - run: pytest -q tests/test_web_auth.py
