@@ -165,7 +165,7 @@ async def _fixed(text: str) -> AsyncIterator[str]:
 @app.get("/health")
 @app.get("/voice/health")
 def health() -> dict[str, Any]:
-    return {"ok": True, "engine": "live3", "model": brain.settings.model, "sessions": len(SESSIONS)}
+    return {"ok": True, "engine": "live3", "model": os.environ.get("OS1_GATEWAY_MODEL", "") if brain.settings.llm_mode == "gateway" else brain.settings.model, "sessions": len(SESSIONS)}
 
 
 def require_bearer(configured_token: str, provided: str, setting_name: str) -> None:
