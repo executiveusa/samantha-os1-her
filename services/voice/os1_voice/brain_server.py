@@ -167,10 +167,21 @@ def health() -> dict[str, Any]:
     return {"ok": True, "engine": "live3", "model": brain.settings.model, "sessions": len(SESSIONS)}
 
 
+def require_bearer(configured_token: str, provided: str, setting_name: str) -> None:
+    """Fail closed when the relevant server secret is unset.
+
+    Keeping the health endpoint public permits basic deployment diagnostics
+    without opening conversation or session data to anonymous callers.
+    """
+    if not configured_token:
+        raise HTTPException(status_code=503, detail=f"{setting_name} is not configured")
+    if not secrets.compare_digest(provided, f"Bearer {configured_token}"):
+        raise HTTPException(status_code=401, detail="unauthorized")
+
+
 @app.post("/v1/chat/completions")
 async def chat_completions(request: Request, authorization: str = Header(default="")) -> StreamingResponse:
-    if BRAIN_TOKEN and not secrets.compare_digest(authorization, f"Bearer {BRAIN_TOKEN}"):
-        raise HTTPException(401, "unauthorized")
+    require_bearer(BRAIN_TOKEN, authorization, "OS1_BRAIN_TOKEN")
     body = await request.json()
     session_id = str(body.get("session_id") or "anonymous")
     extra = body.get("fishaudio_extra_body") or {}
@@ -219,8 +230,7 @@ async def chat_completions(request: Request, authorization: str = Header(default
 async def session_poll(session_id: str, authorization: str = Header(default="")) -> dict[str, Any]:
     """Queued screen events + run results for the app. Polling works through any proxy;
     Cloudflare quick tunnels hold long-lived SSE bodies (measured 2026-11-22)."""
-    if CLIENT_TOKEN and not secrets.compare_digest(authorization, f"Bearer {CLIENT_TOKEN}"):
-        raise HTTPException(401, "unauthorized")
+    require_bearer(CLIENT_TOKEN, authorization, "OS1_CLIENT_TOKEN")
     s = _session(session_id, {})
     events: list[dict[str, Any]] = []
     while not s.ui.queue.empty():
@@ -231,8 +241,7 @@ async def session_poll(session_id: str, authorization: str = Header(default=""))
 @app.get("/os1/sessions/{session_id}/events")
 async def session_events(session_id: str, token: str = "") -> StreamingResponse:
     """Screen state + run results for the app (EventSource can't send headers, so the token is a query param)."""
-    if CLIENT_TOKEN and not secrets.compare_digest(token, CLIENT_TOKEN):
-        raise HTTPException(401, "unauthorized")
+    require_bearer(CLIENT_TOKEN, f"Bearer {token}", "OS1_CLIENT_TOKEN")
     s = _session(session_id, {})
 
     async def stream() -> AsyncIterator[bytes]:
