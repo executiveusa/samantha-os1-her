@@ -38,6 +38,7 @@ from .onboarding_light import load_script
 from .orchestrator_client import OrchestratorClient
 from .router import TurnRouter
 from .turns import TurnEngine, WorkManager
+from . import web_auth
 
 log = logging.getLogger("os1.brain_server")
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s")
@@ -226,11 +227,22 @@ async def chat_completions(request: Request, authorization: str = Header(default
     return sse(_reply(words()))
 
 
+def require_session_reader(request: Request, authorization: str = "", token: str = "") -> None:
+    """Allow server-to-server bearer tokens or a signed browser session cookie."""
+    if CLIENT_TOKEN and (secrets.compare_digest(authorization, f"Bearer {CLIENT_TOKEN}") or (token and secrets.compare_digest(token, CLIENT_TOKEN))):
+        return
+    if web_auth.verify_cookie(request.cookies.get(web_auth.COOKIE_NAME, "")):
+        return
+    if not CLIENT_TOKEN and not web_auth.configured():
+        raise HTTPException(503, "OS1 session reader authentication is not configured")
+    raise HTTPException(401, "unauthorized")
+
+
 @app.get("/os1/sessions/{session_id}/poll")
-async def session_poll(session_id: str, authorization: str = Header(default="")) -> dict[str, Any]:
+async def session_poll(session_id: str, request: Request, authorization: str = Header(default="")) -> dict[str, Any]:
     """Queued screen events + run results for the app. Polling works through any proxy;
     Cloudflare quick tunnels hold long-lived SSE bodies (measured 2026-11-22)."""
-    require_bearer(CLIENT_TOKEN, authorization, "OS1_CLIENT_TOKEN")
+    require_session_reader(request, authorization=authorization)
     s = _session(session_id, {})
     events: list[dict[str, Any]] = []
     while not s.ui.queue.empty():
@@ -239,9 +251,9 @@ async def session_poll(session_id: str, authorization: str = Header(default=""))
 
 
 @app.get("/os1/sessions/{session_id}/events")
-async def session_events(session_id: str, token: str = "") -> StreamingResponse:
+async def session_events(session_id: str, request: Request, token: str = "") -> StreamingResponse:
     """Screen state + run results for the app (EventSource can't send headers, so the token is a query param)."""
-    require_bearer(CLIENT_TOKEN, f"Bearer {token}", "OS1_CLIENT_TOKEN")
+    require_session_reader(request, token=token)
     s = _session(session_id, {})
 
     async def stream() -> AsyncIterator[bytes]:
