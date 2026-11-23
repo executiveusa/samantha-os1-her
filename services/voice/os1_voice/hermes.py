@@ -10,8 +10,6 @@ from dataclasses import dataclass
 from typing import Any
 
 import httpx
-import openai
-from livekit.plugins import openai as lk_openai
 
 from .config import Settings
 
@@ -29,6 +27,9 @@ def voice_llm(settings: Settings, session_id: str) -> lk_openai.LLM:
     only uses the last user message from the body; system messages become an
     ephemeral layer on top of SOUL.md (our per-turn instructions).
     """
+    import openai
+    from livekit.plugins import openai as lk_openai
+
     client = openai.AsyncClient(
         base_url=f"{settings.hermes_api_url.rstrip('/')}/v1",
         api_key=settings.hermes_api_key or "unset",
