@@ -34,7 +34,7 @@ from .brain import Brain
 from .config import Settings
 from .hermes import HermesRuns
 from .jev import Jev
-from .onboarding import load_script
+from .onboarding_light import load_script
 from .orchestrator_client import OrchestratorClient
 from .router import TurnRouter
 from .turns import TurnEngine, WorkManager
