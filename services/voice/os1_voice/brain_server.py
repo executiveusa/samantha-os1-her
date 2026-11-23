@@ -142,7 +142,7 @@ def _sse(chunk_id: str, delta: dict[str, Any], finish: str | None = None) -> byt
         "id": chunk_id,
         "object": "chat.completion.chunk",
         "created": int(time.time()),
-        "model": "samantha",
+        "model": "synthia",
         "choices": [{"index": 0, "delta": delta, "finish_reason": finish}],
     }
     return f"data: {json.dumps(payload)}\n\n".encode()
