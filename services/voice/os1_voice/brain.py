@@ -13,13 +13,16 @@ goes in a mid-conversation system message after the user turn, so the cache hold
 
 from __future__ import annotations
 
+import json
 import logging
+import os
 import time
 from collections.abc import AsyncIterator
 from dataclasses import dataclass
 from typing import Any, Literal
 
 import anthropic
+import httpx
 from anthropic import AsyncAnthropic
 
 from .config import REPO_ROOT, _env
@@ -91,6 +94,66 @@ class Brain:
         # Frozen per engine: any byte change here would invalidate the prompt cache.
         self._system = [{"type": "text", "text": self._persona_text, "cache_control": {"type": "ephemeral"}}]
 
+    async def _gateway_stream(self, history: list[dict[str, str]], note: str | None = None) -> AsyncIterator[str]:
+        """Preview-only low-latency spoken replies through Vercel AI Gateway OIDC.
+
+        Never log tokens, prompts, or streamed response bodies. A short capped
+        completion prevents unbounded generation if the voice caller is silent.
+        """
+        token = os.environ.get("VERCEL_OIDC_TOKEN", "")
+        model = os.environ.get("OS1_GATEWAY_MODEL", "google/gemini-2.5-flash-lite")
+        if not token:
+            log.error("Vercel OIDC not present; AI Gateway cannot authenticate")
+            yield "I'm having trouble connecting to my language model right now."
+            return
+
+        messages: list[dict[str, str]] = [{"role": "system", "content": self._persona_text + ("\\n\\n" + note if note else "")}]
+        messages.extend({"role": m["role"], "content": m["content"]} for m in _normalize(history))
+        if len(messages) == 1 or messages[-1]["role"] != "user":
+            messages.append({"role": "user", "content": "(silence)"})
+        body = {"model": model, "messages": messages, "stream": True, "max_tokens": 240}
+        started = time.perf_counter()
+        emitted = False
+        try:
+            async with httpx.AsyncClient(timeout=httpx.Timeout(8, connect=3)) as client:
+                async with client.stream(
+                    "POST",
+                    "https://ai-gateway.vercel.sh/v1/chat/completions",
+                    headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
+                    json=body,
+                ) as response:
+                    if response.status_code != 200:
+                        # Gateway errors may include sensitive policy details.
+                        log.warning("AI Gateway status=%s model=%s", response.status_code, model)
+                        yield "My language model is unavailable at the moment. Please try again shortly."
+                        return
+                    async for line in response.aiter_lines():
+                        if not line.startswith("data: "):
+                            continue
+                        payload = line[6:].strip()
+                        if payload == "[DONE]":
+                            break
+                        try:
+                            obj = json.loads(payload)
+                            if obj.get("error"):
+                                log.warning("AI Gateway stream error")
+                                break
+                            delta = (obj.get("choices") or [{}])[0].get("delta") or {}
+                            word = delta.get("content")
+                            if isinstance(word, str) and word:
+                                if not emitted:
+                                    log.info("gateway ttft_ms=%d model=%s", int((time.perf_counter()-started)*1000), model)
+                                emitted = True
+                                yield word
+                        except (ValueError, TypeError, IndexError, KeyError):
+                            continue
+            if not emitted:
+                yield "I lost my connection for a moment. Could you say that again?"
+        except (httpx.HTTPError, TimeoutError) as exc:
+            log.warning("AI Gateway transport failed (%s)", type(exc).__name__)
+            if not emitted:
+                yield "My connection dropped for a moment. Could you say that again?"
+
     def _thinking(self) -> dict[str, Any]:
         # Lowest-latency setting each model accepts (effort must be `high` or below for both).
         if self.settings.model.startswith("claude-sonnet-5-5"):
@@ -107,6 +170,12 @@ class Brain:
             messages.append({"role": "user", "content": "(silence)"})
         if note:
             messages.append({"role": "system", "content": note})
+
+        # Vercel AI Gateway uses deployment-scoped OIDC; no provider key in the browser.
+        if self.settings.llm_mode == "gateway":
+            async for chunk in self._gateway_stream(history, note):
+                yield chunk
+            return
 
         # Prefer SmartLLMRouter (OpenRouter :free / NVIDIA NIM / Groq / Cerebras / OpenCode) in free or hybrid-free-first mode.
         prefer_free = self.settings.llm_mode == "free" or (self.settings.llm_mode == "hybrid" and self._router.has_routes)
