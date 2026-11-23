@@ -208,7 +208,7 @@ async def chat_completions(request: Request, authorization: str = Header(default
             note = "The call just connected. Greet them as yourself, warmly and briefly, like picking up where you left off."
         else:
             note = "They've gone quiet. Say something short and natural, or simply check in."
-        return sse(_reply(brain.stream(history, note)))
+        return sse(_reply(brain.stream(history, note, oidc_token=request.headers.get("x-vercel-oidc-token", ""))))
 
     result = await s.engine.decide((last_user or {}).get("content", "").strip())
     if result.note is None:
@@ -217,7 +217,7 @@ async def chat_completions(request: Request, authorization: str = Header(default
 
     async def words() -> AsyncIterator[str]:
         said = ""
-        async for chunk in brain.stream(history, result.note):
+        async for chunk in brain.stream(history, result.note, oidc_token=request.headers.get("x-vercel-oidc-token", "")):
             said += chunk
             yield chunk
         s.engine.heard_her(said)
