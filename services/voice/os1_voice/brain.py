@@ -94,13 +94,13 @@ class Brain:
         # Frozen per engine: any byte change here would invalidate the prompt cache.
         self._system = [{"type": "text", "text": self._persona_text, "cache_control": {"type": "ephemeral"}}]
 
-    async def _gateway_stream(self, history: list[dict[str, str]], note: str | None = None) -> AsyncIterator[str]:
+    async def _gateway_stream(self, history: list[dict[str, str]], note: str | None = None, oidc_token: str = "") -> AsyncIterator[str]:
         """Preview-only low-latency spoken replies through Vercel AI Gateway OIDC.
 
         Never log tokens, prompts, or streamed response bodies. A short capped
         completion prevents unbounded generation if the voice caller is silent.
         """
-        token = os.environ.get("VERCEL_OIDC_TOKEN", "")
+        token = oidc_token or os.environ.get("AI_GATEWAY_API_KEY", "") or os.environ.get("VERCEL_OIDC_TOKEN", "")
         model = os.environ.get("OS1_GATEWAY_MODEL", "google/gemini-2.5-flash-lite")
         if not token:
             log.error("Vercel OIDC not present; AI Gateway cannot authenticate")
@@ -162,7 +162,7 @@ class Brain:
             return {"type": "disabled"}
         return {"type": "adaptive"}  # e.g. Opus 5.5: thinking can't be turned off; low effort keeps it short
 
-    async def stream(self, history: list[dict[str, str]], note: str | None = None) -> AsyncIterator[str]:
+    async def stream(self, history: list[dict[str, str]], note: str | None = None, oidc_token: str = "") -> AsyncIterator[str]:
         """history: alternating user/assistant turns ending with the user's turn.
         note: per-turn operator instructions (routing, tone, first meeting)."""
         messages: list[dict[str, Any]] = _normalize(history)
@@ -173,7 +173,7 @@ class Brain:
 
         # Vercel AI Gateway uses deployment-scoped OIDC; no provider key in the browser.
         if self.settings.llm_mode == "gateway":
-            async for chunk in self._gateway_stream(history, note):
+            async for chunk in self._gateway_stream(history, note, oidc_token):
                 yield chunk
             return
 
