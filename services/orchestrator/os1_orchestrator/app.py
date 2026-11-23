@@ -236,6 +236,24 @@ def health() -> dict[str, Any]:
     }
 
 
+@app.get("/os1/readiness", dependencies=authed)
+def readiness() -> dict[str, Any]:
+    """Credential-presence diagnostics only; never reveal token values."""
+    engine = os.environ.get("OS1_VOICE_ENGINE", "drama3")
+    return {
+        "voice_engine": engine,
+        "voice_configured": bool(os.environ.get("FISH_API_KEY") and os.environ.get("FISH_AGENT_ID"))
+            if engine == "live3" else bool(os.environ.get("LIVEKIT_URL") and os.environ.get("LIVEKIT_API_KEY") and os.environ.get("LIVEKIT_API_SECRET")),
+        "brain_configured": bool(os.environ.get("OS1_BRAIN_TOKEN")),
+        "llm_provider_configured": any(os.environ.get(k) for k in (
+            "ANTHROPIC_API_KEY", "OPENROUTER_API_KEY", "OPENROUTER_API_KEYS",
+            "GROQ_API_KEY", "CEREBRAS_API_KEY", "GOOGLE_API_KEY",
+            "NVIDIA_API_KEY", "MISTRAL_API_KEY", "OPENCODE_BASE_URL")),
+        "hermes_configured": bool(os.environ.get("HERMES_API_KEY") and os.environ.get("HERMES_API_URL")),
+        "durable_session_store": False,
+    }
+
+
 @app.get("/os1/profile", dependencies=authed)
 def get_profile() -> dict[str, Any]:
     return read_profile()
@@ -304,14 +322,16 @@ def _fish_session(profile: dict[str, Any]) -> dict[str, Any]:
 
 @app.post("/os1/token", dependencies=authed)
 def token(req: TokenRequest) -> dict[str, Any]:
-    url, key, secret = (os.environ.get(k, "") for k in ("LIVEKIT_URL", "LIVEKIT_API_KEY", "LIVEKIT_API_SECRET"))
-    if not (url and key and secret):
-        raise HTTPException(503, "LiveKit is not configured (LIVEKIT_URL / LIVEKIT_API_KEY / LIVEKIT_API_SECRET)")
     if req.name and req.name.strip():
         store.patch_profile({"name": req.name.strip()})
     profile = read_profile()
-    if os.environ.get("OS1_VOICE_ENGINE", "drama3") == "live3" and profile.get("onboarded"):
+    if os.environ.get("OS1_VOICE_ENGINE", "drama3") == "live3":
+        # Fish Live 3 provides its own LiveKit URL and room token.
+        # Do not demand the separate drama3 LiveKit cluster for this engine.
         return _fish_session(profile)
+    url, key, secret = (os.environ.get(k, "") for k in ("LIVEKIT_URL", "LIVEKIT_API_KEY", "LIVEKIT_API_SECRET"))
+    if not (url and key and secret):
+        raise HTTPException(503, "LiveKit is not configured (LIVEKIT_URL / LIVEKIT_API_KEY / LIVEKIT_API_SECRET)")
     room = f"os1-{uuid.uuid4().hex[:8]}"
     jwt = (
         api.AccessToken(key, secret)
