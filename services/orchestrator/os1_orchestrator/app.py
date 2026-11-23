@@ -22,7 +22,7 @@ from typing import Any
 import httpx
 import websockets
 from dotenv import load_dotenv
-from fastapi import Depends, FastAPI, Header, HTTPException, Request, WebSocket, WebSocketDisconnect
+from fastapi import Depends, FastAPI, Header, HTTPException, Request, Response, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from livekit import api
@@ -40,6 +40,7 @@ from .store import CONNECTOR_POLICIES, DEFAULT_PROFILE, MEMORY_CATEGORIES, Os1St
 from .vault import InfisicalVault
 from .vision_bridge import VisionClawBridge
 from .wiki import WikiStore
+from . import web_auth
 
 if os.environ.get("OS1_SKIP_DOTENV") != "1":
     load_dotenv(Path(__file__).resolve().parents[3] / ".env")
@@ -93,15 +94,70 @@ def _check_token(raw_token: str) -> bool:
     return secrets.compare_digest(raw_token, CLIENT_TOKEN)
 
 
-def require_client(authorization: str = Header(default="")) -> None:
-    """Every route except /health and HMAC-signed webhooks needs Bearer $OS1_CLIENT_TOKEN."""
-    if not _check_token(authorization):
-        if not CLIENT_TOKEN:
-            raise HTTPException(503, "OS1_CLIENT_TOKEN is not configured (set OS1_DEV_NO_AUTH=1 only for local dev)")
-        raise HTTPException(401, "unauthorized")
+def _same_origin(request: Request) -> bool:
+    """Reject cross-origin browser writes, including cookie-authenticated actions."""
+    from urllib.parse import urlsplit
+    origin = request.headers.get("origin", "")
+    if not origin:
+        return False
+    parsed = urlsplit(origin)
+    return parsed.scheme in ("https", "http") and parsed.netloc == request.headers.get("host", "")
+
+
+def require_client(request: Request, authorization: str = Header(default="")) -> None:
+    """Accept server Bearer credentials or a same-origin signed browser session."""
+    if _check_token(authorization):
+        return
+    if web_auth.verify_cookie(request.cookies.get(web_auth.COOKIE_NAME, "")):
+        if request.method in ("POST", "PUT", "PATCH", "DELETE") and not _same_origin(request):
+            raise HTTPException(403, "cross-origin write rejected")
+        return
+    if not CLIENT_TOKEN and not web_auth.configured():
+        raise HTTPException(503, "OS1 authentication is not configured")
+    raise HTTPException(401, "unauthorized")
 
 
 app = FastAPI(title="OS1 orchestrator")
+
+
+class BrowserLogin(BaseModel):
+    password: str = Field(min_length=1, max_length=4096)
+
+
+@app.get("/os1/auth/session")
+def browser_session(request: Request) -> dict[str, bool]:
+    return {"authenticated": web_auth.verify_cookie(request.cookies.get(web_auth.COOKIE_NAME, "")), "configured": web_auth.configured()}
+
+
+@app.post("/os1/auth/login")
+def browser_login(body: BrowserLogin, request: Request, response: Response) -> dict[str, bool]:
+    if not _same_origin(request):
+        raise HTTPException(403, "cross-origin login rejected")
+    if not web_auth.configured():
+        raise HTTPException(503, "OS1_WEB_LOGIN_PASSWORD and OS1_WEB_SESSION_SECRET are not configured")
+    if not web_auth.check_password(body.password):
+        raise HTTPException(401, "incorrect passphrase")
+    response.set_cookie(
+        key=web_auth.COOKIE_NAME,
+        value=web_auth.make_cookie(),
+        httponly=True,
+        secure=True,
+        samesite="strict",
+        max_age=web_auth.TTL_SECONDS,
+        path="/",
+    )
+    response.headers["Cache-Control"] = "no-store"
+    return {"authenticated": True}
+
+
+@app.post("/os1/auth/logout")
+def browser_logout(request: Request, response: Response) -> dict[str, bool]:
+    if not _same_origin(request):
+        raise HTTPException(403, "cross-origin logout rejected")
+    response.delete_cookie(web_auth.COOKIE_NAME, path="/", secure=True, httponly=True, samesite="strict")
+    response.headers["Cache-Control"] = "no-store"
+    return {"authenticated": False}
+
 authed = [Depends(require_client)]
 _extra_origins = [o.strip() for o in os.environ.get("OS1_ALLOWED_ORIGINS", "").split(",") if o.strip()]
 app.add_middleware(
@@ -279,7 +335,11 @@ def get_state() -> dict[str, Any]:
 @app.websocket("/os1/events")
 async def ws_events(websocket: WebSocket, token: str = "") -> None:
     auth = token or websocket.headers.get("authorization", "")
-    if not _check_token(auth):
+    browser_cookie = websocket.cookies.get(web_auth.COOKIE_NAME, "")
+    origin = websocket.headers.get("origin", "")
+    host = websocket.headers.get("host", "")
+    browser_allowed = web_auth.verify_cookie(browser_cookie) and origin in (f"https://{host}", f"http://{host}")
+    if not (_check_token(auth) or browser_allowed):
         await websocket.close(code=4401)
         return
     await websocket.accept()
