@@ -20,7 +20,7 @@ from dataclasses import dataclass
 from typing import Any, Protocol
 
 from .hermes import HermesRuns
-from .onboarding import first_meeting_overlay, load_script
+from .onboarding_light import first_meeting_overlay, load_script
 from .orchestrator_client import OrchestratorClient
 from .router import Route, RunRef, TurnRouter
 
