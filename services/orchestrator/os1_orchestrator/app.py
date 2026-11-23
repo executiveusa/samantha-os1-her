@@ -237,7 +237,7 @@ def health() -> dict[str, Any]:
 
 
 @app.get("/os1/readiness", dependencies=authed)
-def readiness() -> dict[str, Any]:
+def readiness(request: Request) -> dict[str, Any]:
     """Credential-presence diagnostics only; never reveal token values."""
     engine = os.environ.get("OS1_VOICE_ENGINE", "drama3")
     return {
@@ -245,7 +245,7 @@ def readiness() -> dict[str, Any]:
         "voice_configured": bool(os.environ.get("FISH_API_KEY") and os.environ.get("FISH_AGENT_ID"))
             if engine == "live3" else bool(os.environ.get("LIVEKIT_URL") and os.environ.get("LIVEKIT_API_KEY") and os.environ.get("LIVEKIT_API_SECRET")),
         "brain_configured": bool(os.environ.get("OS1_BRAIN_TOKEN")),
-        "llm_provider_configured": (os.environ.get("OS1_LLM_MODE") == "gateway" and bool(os.environ.get("VERCEL_OIDC_TOKEN"))) or any(os.environ.get(k) for k in (
+        "llm_provider_configured": (os.environ.get("OS1_LLM_MODE") == "gateway" and bool(os.environ.get("VERCEL_OIDC_TOKEN") or request.headers.get("x-vercel-oidc-token") or os.environ.get("AI_GATEWAY_API_KEY"))) or any(os.environ.get(k) for k in (
             "ANTHROPIC_API_KEY", "OPENROUTER_API_KEY", "OPENROUTER_API_KEYS",
             "GROQ_API_KEY", "CEREBRAS_API_KEY", "GOOGLE_API_KEY",
             "NVIDIA_API_KEY", "MISTRAL_API_KEY", "OPENCODE_BASE_URL")),
