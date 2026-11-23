@@ -1,0 +1,15 @@
+[project]
+name = "synthia-voice-vercel"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = [
+    "anthropic>=2.12.0",
+    "fastapi>=0.115.0",
+    "httpx>=0.28.1",
+    "python-dotenv>=1.2.4",
+    "pyyaml>=6.0.4",
+    "typesafe-sdk>=0.7.5",
+]
+
+# This package deliberately excludes LiveKit/native inference packages.
+# Those run in the persistent VPS worker under services/voice.
